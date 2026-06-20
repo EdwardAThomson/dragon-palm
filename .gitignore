@@ -1,0 +1,8 @@
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Node.js (assembler tool)
+node_modules/

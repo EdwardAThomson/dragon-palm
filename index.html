@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en-GB">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dragon Palm</title>
+<style>
+html,body{height:100%;margin:0;background:#171613;display:grid;place-items:center;user-select:none;-webkit-user-select:none}
+#d{position:relative;width:512px;height:745px;background:url(dragon-palm.webp) 0 0/100% 100% no-repeat;user-select:none;-webkit-user-select:none}
+#s{position:absolute;left:92px;top:86px;width:328px;height:307px;background:#000;image-rendering:pixelated;user-select:none;-webkit-user-select:none;touch-action:none}
+#l{position:absolute;left:54px;top:124px;width:10px;height:10px;border-radius:50%;background:#2a0506;opacity:.85}
+#l.on{background:#ff2e3b;box-shadow:0 0 10px 4px #e60021}
+b{position:absolute;touch-action:none}
+</style>
+<div id="d">
+  <canvas id="s" width="128" height="128" draggable="false"></canvas><i id="l"></i>
+  <b data-b="1" style="left:83px;top:486px;width:40px;height:43px"></b>
+  <b data-b="2" style="left:83px;top:568px;width:40px;height:43px"></b>
+  <b data-b="4" style="left:43px;top:527px;width:43px;height:42px"></b>
+  <b data-b="8" style="left:121px;top:527px;width:41px;height:42px"></b>
+  <b data-b="16" style="left:329px;top:525px;width:61px;height:63px;border-radius:50%"></b>
+  <b data-b="32" style="left:410px;top:496px;width:62px;height:64px;border-radius:50%"></b>
+  <b data-b="64" style="left:176px;top:649px;width:54px;height:27px;border-radius:16px"></b>
+  <b data-b="128" style="left:264px;top:646px;width:57px;height:33px;border-radius:16px"></b>
+</div>
+<script>
+class DragonPalmCore{
+  RAM=new Uint8Array(16384);A=0;X=0;Y=0;PC=0;input=0;boot=1;by=-20;beeped=0
+  F={D:0xe999e,E:0xf8e8f,C:0xf888f,N:0x9db99,T:0xf4444,O:0xf999f,U:0x9999f,G:0xf8b9f,H:0x99f99}
+  p(x,y,c){
+    if((x|y)&~127)return
+    let o=8192+(y*128+x>>1),v=this.RAM[o]
+    this.RAM[o]=x&1?v&240|c:v&15|c<<4
+  }
+  t(y){
+    let x=2
+    for(let c of'DECENT ENOUGH'){
+      let m=this.F[c]
+      if(!m){x+=6;continue}
+      for(let i=20;i--;)if(m>>i&1){
+        let X=x+((19-i)&3)*2,Y=y+((19-i)>>2)*2
+        this.p(X,Y,7);this.p(X+1,Y,7);this.p(X,Y+1,7);this.p(X+1,Y+1,7)
+      }
+      x+=10
+    }
+  }
+  frame(){
+    if(this.boot){
+      this.RAM.fill(0,8192);this.t(this.by)
+      let h=this.by==59&&!this.beeped
+      this.beeped|=h;this.by+=this.by<59
+      return h
+    }
+    for(let i=500;i--;)this.step()
+  }
+  step(){
+    let r=this.RAM,p=this.PC&8191,o=r[p++],a
+    switch(o){
+      case 1:this.A=r[p++];break
+      case 2:a=r[p++]|r[p++]<<8;this.A=a==16384?this.input:r[a&16383];break
+      case 3:a=r[p++]|r[p++]<<8;if(a<16384)r[a]=this.A;break
+      case 4:this.A=this.A+this.X&255;break
+      case 5:this.A=this.A-this.X&255;break
+      case 6:p=r[p]|r[p+1]<<8;break
+      case 7:a=r[p++]|r[p++]<<8;if(this.A)p=a;break
+      case 8:this.p(this.X,this.Y,this.A&15);break
+      case 9:this.A=this.input;break
+      case 10:this.X=r[p++];break
+      case 11:this.Y=r[p++];break
+    }
+    this.PC=p&8191
+  }
+}
+let C=new DragonPalmCore,s=document.getElementById('s'),l=document.getElementById('l'),x=s.getContext('2d',{alpha:false}),I=x.createImageData(128,128),D=new Uint32Array(I.data.buffer),P=new Uint32Array([0xff000000,0xff532b1d,0xff53257e,0xff518700,0xff3652ab,0xff4f575f,0xffc7c3c2,0xffe8f1ff,0xff4d00ff,0xff00a3ff,0xff27ecff,0xff36e400,0xffffad29,0xff9c7683,0xffa877ff,0xffaaccff]),A,pwr=1,cart
+l.className='on'
+let beep=()=>{A=A||new AudioContext;A.resume();let o=A.createOscillator(),g=A.createGain();o.type='square';o.frequency.value=523;o.connect(g);g.connect(A.destination);g.gain.value=.05;o.start();o.stop(A.currentTime+.05)}
+let cold=()=>{let i=C.input;C.RAM.fill(0);if(cart)C.RAM.set(cart,0);C.A=C.X=C.Y=C.PC=0;C.input=i;C.boot=!cart;C.by=-20;C.beeped=0}
+let key=(b,v)=>{
+  if(b==128&&v&&!(C.input&128)){
+    pwr^=1;l.className=pwr?'on':''
+    if(pwr)cold();else{D.fill(0xff000000);x.putImageData(I,0,0)}
+  }
+  if(v&&b<16)C.input&=240
+  C.input=v?C.input|b:C.input&~b
+}
+let M={ArrowUp:1,w:1,W:1,ArrowDown:2,s:2,S:2,ArrowLeft:4,a:4,A:4,ArrowRight:8,d:8,D:8,u:16,U:16,k:32,K:32,' ':64,Enter:128}
+onkeydown=e=>{let b=M[e.key];if(b){e.preventDefault();key(b,1)}}
+onkeyup=e=>{let b=M[e.key];if(b){e.preventDefault();key(b,0)}}
+for(let e of document.querySelectorAll('b')){
+  let b=+e.dataset.b
+  e.onpointerdown=v=>{v.preventDefault();e.setPointerCapture(v.pointerId);key(b,1)}
+  e.onpointerup=e.onpointercancel=e.onpointerleave=_=>key(b,0)
+}
+s.ondragover=e=>e.preventDefault()
+s.ondragstart=s.onselectstart=s.onpointerdown=e=>e.preventDefault()
+s.ondrop=e=>{
+  e.preventDefault()
+  let f=new FileReader
+  f.onload=_=>{
+    let buffer=f.result;cart=new Uint8Array(buffer);cold()
+    if(!pwr){C.input&=~128;key(128,1)}C.input&=~128
+  }
+  f.readAsArrayBuffer(e.dataTransfer.files[0])
+}
+let draw=()=>{
+  requestAnimationFrame(draw)
+  if(!pwr)return
+  if(C.frame())beep()
+  for(let i=8192,j=0;i<16384;i++){
+    let v=C.RAM[i]
+    D[j++]=P[v>>4];D[j++]=P[v&15]
+  }
+  x.putImageData(I,0,0)
+}
+draw()
+</script>
+</html>

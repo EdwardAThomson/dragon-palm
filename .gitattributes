@@ -1,0 +1,18 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Source code
+*.html text
+*.css text
+*.js text
+*.asm text
+
+# Documentation
+*.md text
+LICENSE text
+
+# Cartridges
+*.dgc binary
+
+# Graphics
+*.webp binary
