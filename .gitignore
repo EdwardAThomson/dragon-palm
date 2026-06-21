@@ -6,3 +6,6 @@
 
 # Node.js (assembler tool)
 node_modules/
+
+# Local-only cart generator (the committed .asm is the artifact)
+tools/gen_hoard.js

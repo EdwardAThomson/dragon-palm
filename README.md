@@ -20,6 +20,7 @@ Try the included carts:
 | **Adder** | [carts/adder.dgc](carts/adder.dgc) | D-pad changes direction. |
 | **Magic Screen** | [carts/magic-screen.dgc](carts/magic-screen.dgc) | D-pad draws, `U` changes colour up, `K` changes colour down. |
 | **Dragon Tennis** | [carts/tennis.dgc](carts/tennis.dgc) | Up and Down move the paddle. |
+| **Dragon Hoard** | [carts/hoard.dgc](carts/hoard.dgc) | D-pad moves the dragon onto gems to score. |
 
 You can use the on-screen buttons or keyboard controls:
 
