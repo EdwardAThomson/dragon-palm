@@ -55,11 +55,15 @@ exact same core headlessly in Node:
 node --test        # or: npm test
 ```
 
-The suite (in [tests/](tests/)) checks three layers: the assembler reassembles the bundled
-carts byte-for-byte, every opcode behaves per spec, and each game does what it should —
-load a cart, feed scripted input, run frames, and assert on the screen. Use this to prove a
-cart works before swapping it live. See [docs/core-extraction-plan.md](docs/core-extraction-plan.md)
-for the design.
+It can run **any `.dgc` cart fully headless** — load it, drive the input register with a
+scripted button sequence, and read the screen back from VRAM — so you can prove a game works
+before swapping it live. The suite (in [tests/](tests/)) has four layers: the assembler
+reassembles the bundled carts byte-for-byte, every opcode behaves per spec, each game does
+what it should under scripted input, and a fidelity guard proves the harness exercises the
+exact behaviour `index.html` ships (so green means the browser is correct).
+
+See the [Testing Guide](docs/testing.md) for the harness API and what this brings to the
+ecosystem, and the [extraction plan](docs/core-extraction-plan.md) for the design.
 
 ## Fantasy Hardware Specification
 
