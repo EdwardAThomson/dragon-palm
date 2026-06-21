@@ -1,6 +1,7 @@
 ; Dragon Hoard (work in progress)
-; Steer the dragon (D-pad) onto gems. Each gem caught lights a score pip along
-; the top and the next gem appears at one of four spots in turn.
+; Steer the dragon (D-pad, clamped to the screen edges) onto treasure. Pickups
+; cycle through four spots: three colour-changing gems (worth one score pip) and
+; one gold coin (worth three). Each catch lights pips along the top.
 ;
 ; The dragon is an 8-pixel sprite and the gem is a 3x3 block, each drawn relative
 ; to a base coordinate via self-modifying code (draw_sprite / draw_gem rewrite the
@@ -34,6 +35,22 @@ after_gini:
   STA [draw_sprite_ret+2]
   JMP draw_sprite
 after_dini:
+  ; --- draw the score-HUD separator line once at y=7 (the dragon clamps at
+  ;     by>=8, so it can never reach or erase this row). Drawn after the dragon
+  ;     and gem so they appear immediately; the line fills in over the next frame. ---
+  LD_Y 7
+sep_loop:
+sep_x:
+  LD_X 0
+  LD_A 5
+  DRW
+  LD_A [sep_x+1]
+  LD_X 1
+  ADD_A
+  STA [sep_x+1]
+  LD_X 128
+  SUB_A
+  JNZ sep_loop
 
 main:
   ; --- poll input; record a direction, or wait untouched if no D-pad ---
@@ -87,6 +104,43 @@ idle_tick:
   JMP do_wait
 
 do_step:
+  ; --- bounds gate: if the move would leave the screen, skip it (no redraw) ---
+  ; sprite spans bx..bx+3 / by..by+2, so legal base is bx 0..124, by 0..125.
+  LD_A [dir]
+  LD_X 1
+  SUB_A
+  JNZ bg_down
+  LD_A [by]
+  LD_X 8
+  SUB_A
+  JNZ do_step_go        ; up blocked at by==8: top 8 rows are the score HUD
+  JMP do_wait
+bg_down:
+  LD_A [dir]
+  LD_X 2
+  SUB_A
+  JNZ bg_left
+  LD_A [by]
+  LD_X 125
+  SUB_A
+  JNZ do_step_go        ; down blocked only at by==125
+  JMP do_wait
+bg_left:
+  LD_A [dir]
+  LD_X 3
+  SUB_A
+  JNZ bg_right
+  LD_A [bx]
+  JNZ do_step_go        ; left blocked only at bx==0
+  JMP do_wait
+bg_right:
+  LD_A [bx]
+  LD_X 124
+  SUB_A
+  JNZ do_step_go        ; right blocked only at bx==124
+  JMP do_wait
+
+do_step_go:
   ; --- erase the dragon at the old base ---
   LD_A 0
   STA [col]
@@ -186,7 +240,18 @@ eat:
   STA [draw_gem_ret+2]
   JMP draw_gem
 after_gera:
-  ; light the next score pip (white)
+  ; award score pips: the gold coin (slot 2) is worth 3, a gem worth 1
+  LD_A [slot]
+  LD_X 2
+  SUB_A
+  JNZ score_one
+  LD_A 3
+  STA [pipn]
+  JMP pip_loop
+score_one:
+  LD_A 1
+  STA [pipn]
+pip_loop:
 pip_x:
   LD_X 4
   LD_Y 4
@@ -196,6 +261,11 @@ pip_x:
   LD_X 3
   ADD_A
   STA [pip_x+1]
+  LD_A [pipn]
+  LD_X 1
+  SUB_A
+  STA [pipn]
+  JNZ pip_loop
   ; advance to the next gem slot (cycle through four spots)
   LD_A [slot]
   LD_X 1
@@ -207,12 +277,15 @@ pip_x:
   LD_A 0
   STA [slot]
 place_gem:
+  ; each slot has its own position and colour
   LD_A [slot]
   JNZ gem_slot1
   LD_A 94
   STA [gemx]
   LD_A 62
   STA [gemy]
+  LD_A 14
+  STA [gcol]            ; lavender
   JMP draw_phase
 gem_slot1:
   LD_A [slot]
@@ -223,6 +296,8 @@ gem_slot1:
   STA [gemx]
   LD_A 98
   STA [gemy]
+  LD_A 10
+  STA [gcol]            ; cyan
   JMP draw_phase
 gem_slot2:
   LD_A [slot]
@@ -233,17 +308,20 @@ gem_slot2:
   STA [gemx]
   LD_A 22
   STA [gemy]
+  LD_A 12
+  STA [gcol]            ; gold (this slot is the coin)
   JMP draw_phase
 gem_slot3:
   LD_A 108
   STA [gemx]
   LD_A 104
   STA [gemy]
+  LD_A 13
+  STA [gcol]            ; mauve
 
 draw_phase:
-  ; redraw the gem (restores any cells the dragon erase clipped) then the dragon
-  LD_A 14
-  STA [gcol]
+  ; redraw the gem in its current colour (restores any cells the dragon erase
+  ; clipped) then the dragon
   LD_A [r_gdra]
   STA [draw_gem_ret+1]
   LD_A [r_gdra+1]
@@ -544,4 +622,6 @@ dir:
 slot:
   DB 0
 mtick:
+  DB 0
+pipn:
   DB 0
