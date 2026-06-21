@@ -45,6 +45,19 @@ Read the developer kit:
 - [Assembly Language Reference](docs/language.md)
 - [Cartridge Format](docs/cartridge.md)
 
+## Testing
+
+A dependency-free Node test suite characterises the emulator and assembler. Run it with:
+
+```sh
+node --test        # or: npm test
+```
+
+It checks three layers: the assembler reassembles the bundled carts byte-for-byte, every
+CPU opcode behaves per spec, and each game does what it should — load a cart, feed scripted
+input, run frames, and assert on the resulting screen. Use it to prove a cart works before
+swapping it live. The suite runs headlessly and does not require a browser.
+
 ## Fantasy Hardware Specification
 
 - 16 KB single flat memory array

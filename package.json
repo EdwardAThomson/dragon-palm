@@ -1,0 +1,17 @@
+{
+  "name": "dragon-palm",
+  "version": "1.0.0",
+  "description": "A fantasy 8-bit handheld console that runs tiny .dgc cartridges in the browser.",
+  "license": "MIT",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test",
+    "assemble": "node tools/assembler.js"
+  },
+  "files": [
+    "index.html",
+    "tools/",
+    "carts/",
+    "docs/"
+  ]
+}
