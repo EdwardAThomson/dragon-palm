@@ -112,5 +112,21 @@ let draw=()=>{
   x.putImageData(I,0,0)
 }
 draw()
+let fit=()=>{document.getElementById('d').style.zoom=Math.min(1,innerWidth/512,innerHeight/745)}
+addEventListener('resize',fit);fit()
+let fi=document.createElement('input')
+fi.type='file';fi.accept='.dgc';fi.style.cssText='display:none'
+document.body.appendChild(fi)
+fi.onchange=()=>{
+  if(!fi.files.length)return
+  let f=new FileReader
+  f.onload=_=>{
+    let buffer=f.result;cart=new Uint8Array(buffer);cold()
+    if(!pwr){C.input&=~128;key(128,1)}C.input&=~128
+    fi.value=''
+  }
+  f.readAsArrayBuffer(fi.files[0])
+}
+s.addEventListener('pointerup',e=>{if(e.isPrimary)fi.click()})
 </script>
 </html>
