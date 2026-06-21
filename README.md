@@ -47,16 +47,19 @@ Read the developer kit:
 
 ## Testing
 
-A dependency-free Node test suite characterises the emulator and assembler. Run it with:
+The CPU core lives in [tools/core.js](tools/core.js) as a single shared source — `index.html`
+loads it directly (no build step, still opens from `file://`) and the test suite runs the
+exact same core headlessly in Node:
 
 ```sh
 node --test        # or: npm test
 ```
 
-It checks three layers: the assembler reassembles the bundled carts byte-for-byte, every
-CPU opcode behaves per spec, and each game does what it should — load a cart, feed scripted
-input, run frames, and assert on the resulting screen. Use it to prove a cart works before
-swapping it live. The suite runs headlessly and does not require a browser.
+The suite (in [tests/](tests/)) checks three layers: the assembler reassembles the bundled
+carts byte-for-byte, every opcode behaves per spec, and each game does what it should —
+load a cart, feed scripted input, run frames, and assert on the screen. Use this to prove a
+cart works before swapping it live. See [docs/core-extraction-plan.md](docs/core-extraction-plan.md)
+for the design.
 
 ## Fantasy Hardware Specification
 
