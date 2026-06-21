@@ -141,15 +141,11 @@ bg_right:
   JMP do_wait
 
 do_step_go:
-  ; --- erase the dragon at the old base ---
-  LD_A 0
-  STA [col]
-  LD_A [r_dera]
-  STA [draw_sprite_ret+1]
-  LD_A [r_dera+1]
-  STA [draw_sprite_ret+2]
-  JMP draw_sprite
-after_dera:
+  ; --- save the old base (needed to erase the trailing edge after the move) ---
+  LD_A [bx]
+  STA [obx]
+  LD_A [by]
+  STA [oby]
 
   ; --- apply the move to the base ---
   LD_A [dir]
@@ -320,14 +316,9 @@ gem_slot3:
   STA [gcol]            ; mauve
 
 draw_phase:
-  ; redraw the gem in its current colour (restores any cells the dragon erase
-  ; clipped) then the dragon
-  LD_A [r_gdra]
-  STA [draw_gem_ret+1]
-  LD_A [r_gdra+1]
-  STA [draw_gem_ret+2]
-  JMP draw_gem
-after_gdra:
+  ; Flicker-free move: draw the dragon at the NEW base first (it is never fully
+  ; erased, so it can't be caught mid-redraw), then erase only the cells it
+  ; vacated (the trailing edge, by direction), then redraw the gem on top.
   LD_A 11
   STA [col]
   LD_A [r_ddra]
@@ -336,6 +327,283 @@ after_gdra:
   STA [draw_sprite_ret+2]
   JMP draw_sprite
 after_ddra:
+  LD_A [dir]
+  LD_X 1
+  SUB_A
+  JNZ te_down
+  LD_A [obx]
+  LD_X 0
+  ADD_A
+  STA [teu0x+1]
+  LD_A [oby]
+  LD_X 1
+  ADD_A
+  STA [teu0y+1]
+teu0x:
+  LD_X 0
+teu0y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  LD_A [obx]
+  LD_X 2
+  ADD_A
+  STA [teu1x+1]
+  LD_A [oby]
+  LD_X 1
+  ADD_A
+  STA [teu1y+1]
+teu1x:
+  LD_X 0
+teu1y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  LD_A [obx]
+  LD_X 1
+  ADD_A
+  STA [teu2x+1]
+  LD_A [oby]
+  LD_X 2
+  ADD_A
+  STA [teu2y+1]
+teu2x:
+  LD_X 0
+teu2y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  LD_A [obx]
+  LD_X 3
+  ADD_A
+  STA [teu3x+1]
+  LD_A [oby]
+  LD_X 2
+  ADD_A
+  STA [teu3y+1]
+teu3x:
+  LD_X 0
+teu3y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  JMP te_done
+te_down:
+  LD_A [dir]
+  LD_X 2
+  SUB_A
+  JNZ te_left
+  LD_A [obx]
+  LD_X 0
+  ADD_A
+  STA [ted0x+1]
+  LD_A [oby]
+  LD_X 0
+  ADD_A
+  STA [ted0y+1]
+ted0x:
+  LD_X 0
+ted0y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  LD_A [obx]
+  LD_X 3
+  ADD_A
+  STA [ted1x+1]
+  LD_A [oby]
+  LD_X 0
+  ADD_A
+  STA [ted1y+1]
+ted1x:
+  LD_X 0
+ted1y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  LD_A [obx]
+  LD_X 1
+  ADD_A
+  STA [ted2x+1]
+  LD_A [oby]
+  LD_X 1
+  ADD_A
+  STA [ted2y+1]
+ted2x:
+  LD_X 0
+ted2y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  LD_A [obx]
+  LD_X 2
+  ADD_A
+  STA [ted3x+1]
+  LD_A [oby]
+  LD_X 1
+  ADD_A
+  STA [ted3y+1]
+ted3x:
+  LD_X 0
+ted3y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  JMP te_done
+te_left:
+  LD_A [dir]
+  LD_X 3
+  SUB_A
+  JNZ te_right
+  LD_A [obx]
+  LD_X 0
+  ADD_A
+  STA [tel0x+1]
+  LD_A [oby]
+  LD_X 0
+  ADD_A
+  STA [tel0y+1]
+tel0x:
+  LD_X 0
+tel0y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  LD_A [obx]
+  LD_X 3
+  ADD_A
+  STA [tel1x+1]
+  LD_A [oby]
+  LD_X 0
+  ADD_A
+  STA [tel1y+1]
+tel1x:
+  LD_X 0
+tel1y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  LD_A [obx]
+  LD_X 3
+  ADD_A
+  STA [tel2x+1]
+  LD_A [oby]
+  LD_X 1
+  ADD_A
+  STA [tel2y+1]
+tel2x:
+  LD_X 0
+tel2y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  LD_A [obx]
+  LD_X 1
+  ADD_A
+  STA [tel3x+1]
+  LD_A [oby]
+  LD_X 2
+  ADD_A
+  STA [tel3y+1]
+tel3x:
+  LD_X 0
+tel3y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  LD_A [obx]
+  LD_X 3
+  ADD_A
+  STA [tel4x+1]
+  LD_A [oby]
+  LD_X 2
+  ADD_A
+  STA [tel4y+1]
+tel4x:
+  LD_X 0
+tel4y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  JMP te_done
+te_right:
+  LD_A [obx]
+  LD_X 0
+  ADD_A
+  STA [ter0x+1]
+  LD_A [oby]
+  LD_X 0
+  ADD_A
+  STA [ter0y+1]
+ter0x:
+  LD_X 0
+ter0y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  LD_A [obx]
+  LD_X 3
+  ADD_A
+  STA [ter1x+1]
+  LD_A [oby]
+  LD_X 0
+  ADD_A
+  STA [ter1y+1]
+ter1x:
+  LD_X 0
+ter1y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  LD_A [obx]
+  LD_X 0
+  ADD_A
+  STA [ter2x+1]
+  LD_A [oby]
+  LD_X 1
+  ADD_A
+  STA [ter2y+1]
+ter2x:
+  LD_X 0
+ter2y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  LD_A [obx]
+  LD_X 1
+  ADD_A
+  STA [ter3x+1]
+  LD_A [oby]
+  LD_X 2
+  ADD_A
+  STA [ter3y+1]
+ter3x:
+  LD_X 0
+ter3y:
+  LD_Y 0
+  LD_A 0
+  DRW
+  LD_A [obx]
+  LD_X 3
+  ADD_A
+  STA [ter4x+1]
+  LD_A [oby]
+  LD_X 2
+  ADD_A
+  STA [ter4y+1]
+ter4x:
+  LD_X 0
+ter4y:
+  LD_Y 0
+  LD_A 0
+  DRW
+te_done:
+  LD_A [r_gdra]
+  STA [draw_gem_ret+1]
+  LD_A [r_gdra+1]
+  STA [draw_gem_ret+2]
+  JMP draw_gem
+after_gdra:
 
 do_wait:
   LD_A 40
@@ -595,8 +863,6 @@ draw_gem_ret:
 ; --- data ---
 r_dini:
   DW after_dini
-r_dera:
-  DW after_dera
 r_ddra:
   DW after_ddra
 r_gini:
@@ -624,4 +890,8 @@ slot:
 mtick:
   DB 0
 pipn:
+  DB 0
+obx:
+  DB 0
+oby:
   DB 0

@@ -41,16 +41,21 @@ test('hoard: idle is rock-steady (no flicker when not moving)',()=>{
   }
 })
 
-test('hoard: D-pad moves the dragon and leaves no trail',()=>{
+test('hoard: moving is flicker-free (sprite never disappears) and leaves no trail',()=>{
+  // Draw-new-then-erase-trailing means the sprite is always fully present while
+  // moving (never caught mid-redraw), so green never drops below 8.
   const a=loadCartFile('hoard.dgc')
-  let maxGreen=0,minY=128
+  let minGreen=99,minY=128
   for(let f=0;f<40;f++){
     a.input=UP;a.frame()
-    maxGreen=Math.max(maxGreen,count(a,DRAGON))
+    minGreen=Math.min(minGreen,count(a,DRAGON))
     for(let y=0;y<minY;y++)for(let x=0;x<128;x++)if(pixelAt(a,x,y)===DRAGON){minY=y;break}
   }
-  assert.ok(maxGreen<=8,`no trail: never more than 8 green (saw ${maxGreen})`)
-  assert.ok(minY<60,`dragon climbed well above the start row (reached y=${minY})`)
+  assert.ok(minGreen>=8,`sprite always complete while moving (min green was ${minGreen})`)
+  assert.ok(minY<60,`dragon climbed above the start row (reached y=${minY})`)
+  // After stopping, the trailing edge is fully cleaned — exactly 8, no smear.
+  for(let f=0;f<10;f++){a.input=0;a.frame()}
+  assert.equal(count(a,DRAGON),8,'no leftover trail after stopping')
 })
 
 test('hoard: box collision — catches anywhere in the gem cell, misses just outside',()=>{
