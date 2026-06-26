@@ -11,9 +11,23 @@ const {loadCartFile,run,pixelAt}=require('./harness.js')
 const FRAME=6,PLAYER=11,ENEMY=8,WALL=4,FLOOR=5
 const UP=1,DOWN=2,LEFT=4,RIGHT=8
 const PCOL=0x1F09,PROW=0x1F0A,STATE=0x1F08,CURROOM=0x1F14,ENEMY_ALIVE=0x1F18
+const PLAYER_HP=0x1F1A,ENEMY_HP=0x1F1B
 const ROOM0=0x15,ROOM3=0x18
-const COMBAT_BG=2,START=64
+const COMBAT_BG=2,START=64,U=16
 // note: ENEMY (red 8) is defined above with the other colours
+
+const rowCount=(c,col,y)=>{let n=0;for(let x=0;x<128;x++)if(pixelAt(c,x,y)===col)n++;return n}
+// One combat turn: hold U long enough for the round + HP-bar repaint, then
+// release so the edge-debounce rearms for the next attack.
+const attack=a=>{run(a,90,U);run(a,15,0)}
+// Drop the player next to the room-1 guard and step in; let the (slow) combat
+// backdrop + bars finish painting before returning.
+function intoCombat(){
+  const a=loadCartFile('rpg.dgc'); run(a,BOOTED,0)
+  a.RAM[CURROOM]=0x16; a.RAM[PCOL]=3; a.RAM[PROW]=3
+  run(a,40,RIGHT); run(a,200,0)
+  return a
+}
 // Boot now paints the HUD AND a 64-cell room AND the player: ~200 frames of
 // drawing. 400 settles it with comfortable headroom.
 const BOOTED=400
@@ -141,4 +155,94 @@ test('rpg M4: Start flees combat back to EXPLORE and repaints the room',()=>{
   assert.equal(a.RAM[STATE],0,'back in EXPLORE')
   assert.equal(pixelAt(a,66,42),FLOOR,'room repainted (floor at (4,4))')
   assert.equal(pixelAt(a,66,34),ENEMY,'enemy is still there after fleeing')
+})
+
+test('rpg M5: attacking drains both HP bars',()=>{
+  const a=intoCombat()
+  assert.equal(a.RAM[STATE],1,'in combat')
+  assert.equal(a.RAM[ENEMY_HP],96,'enemy starts at full HP')
+  attack(a); attack(a)
+  assert.equal(a.RAM[ENEMY_HP],48,'enemy HP down 2x24 = 48')
+  assert.equal(a.RAM[PLAYER_HP],72,'player took 2 counters of 12 = 72')
+  assert.equal(rowCount(a,ENEMY,102),48,'enemy bar shows 48 red px')
+  assert.equal(rowCount(a,PLAYER,92),72,'player bar shows 72 green px')
+})
+
+test('rpg M5: four hits win, clear the enemy, and open the path',()=>{
+  const a=intoCombat()
+  attack(a); attack(a); attack(a); attack(a)
+  run(a,200,0)
+  assert.equal(a.RAM[STATE],0,'won: back in EXPLORE')
+  assert.equal(a.RAM[ENEMY_ALIVE],0,'enemy cleared')
+  assert.equal(a.RAM[PLAYER_HP],60,'player survived 3 counters, 60 HP left')
+  // the formerly blocked cell (4,3) is now walkable: holding RIGHT now walks
+  // clean through room 1 and on into room 2 (proving the guard no longer stops us)
+  a.RAM[PCOL]=3; a.RAM[PROW]=3
+  run(a,60,RIGHT)
+  assert.ok(a.RAM[CURROOM]>=0x17,'walked past the cleared enemy into the next room')
+  assert.equal(a.RAM[STATE],0,'no combat re-triggered (enemy dead)')
+})
+
+test('rpg M5: the combat screen shows a green-vs-red face-off, enemy flashes on hit',()=>{
+  const WHITE=7
+  const a=intoCombat()
+  // green player avatar (x40..55) vs red enemy avatar (x72..87), both y32..47
+  assert.equal(pixelAt(a,44,36),PLAYER,'player avatar drawn green on the left')
+  assert.equal(pixelAt(a,84,44),ENEMY,'enemy avatar drawn red on the right')
+  // attacking flashes the enemy white at some point during the round
+  a.input=U
+  let sawWhite=false
+  for(let f=0;f<60;f++){a.frame();if(pixelAt(a,76,36)===WHITE)sawWhite=true}
+  assert.ok(sawWhite,'enemy flashes white when hit')
+  a.input=0; run(a,40,0)
+  assert.equal(a.RAM[ENEMY_HP],72,'the hit landed (enemy HP 96->72)')
+  assert.equal(pixelAt(a,76,36),ENEMY,'enemy avatar restored to red after the flash')
+})
+
+test('rpg M5: losing all HP drops to GAMEOVER, and Start resets the game',()=>{
+  const a=intoCombat()
+  a.RAM[PLAYER_HP]=12                       // one counter will finish the player
+  attack(a)
+  run(a,200,0)
+  assert.equal(a.RAM[STATE],2,'GAMEOVER')
+  run(a,40,START); run(a,400,0)             // Start resets, then re-init/repaint settles
+  assert.equal(a.RAM[STATE],0,'reset to EXPLORE')
+  assert.equal(a.RAM[PLAYER_HP],96,'player HP restored')
+  assert.equal(a.RAM[ENEMY_ALIVE],1,'enemy restored')
+})
+
+test('rpg M6: the hoard renders gold, stepping on it wins, Start resets',()=>{
+  const GOLD=10
+  // flip east from room 2 into room 3 so it repaints (incl. the hoard tile)
+  const a=loadCartFile('rpg.dgc'); run(a,BOOTED,0)
+  a.RAM[CURROOM]=0x17; a.RAM[PCOL]=6; a.RAM[PROW]=3
+  run(a,40,RIGHT); run(a,220,0)
+  assert.equal(a.RAM[CURROOM],ROOM3,'in the hoard room')
+  assert.equal(pixelAt(a,82,58),GOLD,'hoard tile is gold at (6,6)')
+  // walk onto the hoard
+  a.RAM[PCOL]=6; a.RAM[PROW]=5
+  run(a,60,DOWN); run(a,200,0)
+  assert.equal(a.RAM[STATE],3,'reaching the hoard wins (STATE=3)')
+  assert.equal(pixelAt(a,64,40),GOLD,'victory screen is gold')
+  run(a,40,START); run(a,400,0)
+  assert.equal(a.RAM[STATE],0,'Start resets to EXPLORE')
+  assert.equal(a.RAM[CURROOM],ROOM0,'reset back to room 0')
+})
+
+test('rpg MVP: full playthrough — boot, beat the guard, reach the hoard, win',()=>{
+  const a=loadCartFile('rpg.dgc'); run(a,BOOTED,0)
+  // walk to the room-1 guard and defeat it
+  a.RAM[CURROOM]=0x16; a.RAM[PCOL]=3; a.RAM[PROW]=3
+  run(a,40,RIGHT); run(a,200,0)
+  assert.equal(a.RAM[STATE],1,'engaged the guard')
+  attack(a); attack(a); attack(a); attack(a); run(a,200,0)
+  assert.equal(a.RAM[ENEMY_ALIVE],0,'guard defeated')
+  assert.equal(a.RAM[STATE],0,'back to exploring')
+  // travel east along the door row through rooms 2 and 3, then onto the hoard
+  a.RAM[PROW]=3
+  run(a,600,RIGHT)                          // chains room1 -> room2 -> room3, jams at (6,3)
+  assert.equal(a.RAM[CURROOM],ROOM3,'crossed the dungeon to the hoard room')
+  a.RAM[PCOL]=6; a.RAM[PROW]=5
+  run(a,60,DOWN); run(a,200,0)
+  assert.equal(a.RAM[STATE],3,'won the game by reaching the hoard')
 })

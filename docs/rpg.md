@@ -274,8 +274,21 @@ tiles, and the goal — not sentences.
    CURROOM = room page byte, so neighbours are +/-1 page; no exit table needed.)
 4. ✅ **One enemy** entity (red cell on room 1's door row); stepping onto it triggers COMBAT.
    Placeholder combat screen + Start to flee; real fight is M5.
-5. **Turn-based combat** with numeric HP for player + enemy; win returns to map, lose = GAMEOVER.
-6. **Goal room:** reach the hoard tile = WIN screen.
+5. ✅ **Turn-based combat**: U attacks, HP bars drain (HP stored directly as bar-pixel
+   width, so no scaling/multiply); win clears the enemy and opens the path, lose = GAMEOVER
+   (Start resets). Damage divides HP evenly so it lands on 0 (no borrow-flag needed).
+   Combat screen is a green-vs-red **face-off** with a white **hit-flash** so it reads
+   without text (green/red HP bars map to the two avatars).
+6. ✅ **Goal room:** a gold **hoard tile** (id 2) in room 3; stepping on it = WIN screen
+   (gold field, Start resets). `tests/rpg.test.js` includes a full end-to-end playthrough.
+
+**MVP complete.** Boot → explore a 4-room dungeon → beat the guard → cross to the hoard → win.
+61/61 tests pass.
+
+**Known perf caveat (M3-M5):** every room/combat repaint flat-fills cells via `DRW`
+(~2.5 s for a full viewport, ~0.5 s per HP-bar update). Functionally fine, reads as a
+retro screen-load, but the obvious optimisation is direct VRAM byte-writes (2 px/byte)
+instead of per-pixel `DRW`. Deferred until it actually bothers play.
 
 Each milestone is a runnable `.dgc` and gets a headless test (load cart, script input, assert
 VRAM via `pixelAt`) so the build stays honest against the conformance laws.
